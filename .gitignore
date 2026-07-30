@@ -4,11 +4,16 @@ env/
 
 # .gitignore
 .env
+.streamlit/secrets.toml
 
 # Ignore __pycache__ and bytecode
 __pycache__/
 *.pyc
 *.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
 
 # Ignore OS files
 .DS_Store

@@ -1,10 +1,15 @@
 import io
+import os
 import unittest
+from unittest.mock import Mock, patch
 
 from docx import Document
 from pydantic import ValidationError
 
 from analysis_service import ResumeAnalysis
+from learning_resources import learning_resources
+from job_service import search_jobs_india
+from rag_service import chunk_resume
 from resume_parser import ResumeParseError, extract_resume_text
 
 
@@ -58,6 +63,72 @@ class AnalysisSchemaTests(unittest.TestCase):
                     'action_plan': ['One', 'Two', 'Three'],
                 }
             )
+
+
+class ResumeChunkingTests(unittest.TestCase):
+    def test_chunks_long_resume_with_overlap(self):
+        resume = "\n".join(
+            f"Project {index}: Built an Azure analytics workflow with measurable impact."
+            for index in range(80)
+        )
+
+        chunks = chunk_resume(resume, max_chars=500, overlap_chars=60)
+
+        self.assertGreater(len(chunks), 1)
+        self.assertTrue(all(len(chunk) <= 600 for chunk in chunks))
+        self.assertIn("Azure analytics", " ".join(chunks))
+
+
+class LearningResourceTests(unittest.TestCase):
+    def test_builds_safe_encoded_provider_links(self):
+        resources = learning_resources("Power BI & DAX")
+
+        self.assertEqual(len(resources), 4)
+        self.assertTrue(all(resource.url.startswith("https://") for resource in resources))
+        self.assertTrue(all(" " not in resource.url for resource in resources))
+        self.assertIn("Power+BI+%26+DAX", resources[0].url)
+
+
+class JoobleJobTests(unittest.TestCase):
+    @patch("job_service.load_dotenv")
+    @patch("job_service.requests.post")
+    def test_searches_india_and_sanitizes_results(self, post, _load_dotenv):
+        response = Mock(status_code=200)
+        response.json.return_value = {
+            "totalCount": 3,
+            "jobs": [
+                {
+                    "id": 1,
+                    "title": "Data <b>Analyst</b>",
+                    "company": "Example Ltd",
+                    "location": "Bengaluru, Karnataka",
+                    "snippet": "<strong>Build</strong> dashboards &amp; reports.",
+                    "type": "Full-time",
+                    "link": "https://in.jooble.org/job/1",
+                },
+                {
+                    "id": 2,
+                    "title": "Unsafe job",
+                    "link": "javascript:alert(1)",
+                },
+                {
+                    "id": 3,
+                    "title": "Duplicate",
+                    "link": "https://in.jooble.org/job/1",
+                },
+            ],
+        }
+        post.return_value = response
+
+        with patch.dict(os.environ, {"JOOBLE_API_KEY": "test-key"}):
+            result = search_jobs_india("Data Analyst", 12)
+
+        request = post.call_args
+        self.assertEqual(request.kwargs["json"]["location"], "India")
+        self.assertEqual(request.kwargs["json"]["keywords"], "Data Analyst")
+        self.assertEqual(len(result.jobs), 1)
+        self.assertEqual(result.jobs[0].title, "Data Analyst")
+        self.assertEqual(result.jobs[0].snippet, "Build dashboards & reports.")
 
 
 if __name__ == '__main__':
