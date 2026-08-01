@@ -3,13 +3,14 @@ import os
 import unittest
 from unittest.mock import Mock, patch
 
+from azure.core.credentials import AzureKeyCredential
 from docx import Document
 from pydantic import ValidationError
 
 from analysis_service import ResumeAnalysis
 from learning_resources import learning_resources
 from job_service import search_jobs_india
-from rag_service import chunk_resume
+from rag_service import _search_credential, chunk_resume
 from resume_parser import ResumeParseError, extract_resume_text
 
 
@@ -77,6 +78,13 @@ class ResumeChunkingTests(unittest.TestCase):
         self.assertGreater(len(chunks), 1)
         self.assertTrue(all(len(chunk) <= 600 for chunk in chunks))
         self.assertIn("Azure analytics", " ".join(chunks))
+
+    def test_uses_search_api_key_when_configured(self):
+        with patch.dict(os.environ, {"AZURE_SEARCH_API_KEY": "test-search-key"}):
+            credential = _search_credential()
+
+        self.assertIsInstance(credential, AzureKeyCredential)
+        self.assertEqual(credential.key, "test-search-key")
 
 
 class LearningResourceTests(unittest.TestCase):

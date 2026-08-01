@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 
 from azure.ai.documentintelligence import DocumentIntelligenceClient
+from azure.core.credentials import AzureKeyCredential
 from azure.identity import DefaultAzureCredential
 from dotenv import load_dotenv
 
@@ -40,9 +41,13 @@ def extract_resume_text_azure(uploaded_file) -> str:
         raise ResumeParseError("The uploaded resume is empty.")
 
     try:
+        api_key = os.getenv("AZURE_DOCUMENT_INTELLIGENCE_API_KEY", "").strip()
+        credential = (
+            AzureKeyCredential(api_key) if api_key else DefaultAzureCredential()
+        )
         client = DocumentIntelligenceClient(
             endpoint=endpoint,
-            credential=DefaultAzureCredential(),
+            credential=credential,
         )
         result = client.begin_analyze_document(
             "prebuilt-layout",
@@ -52,7 +57,7 @@ def extract_resume_text_azure(uploaded_file) -> str:
     except Exception as exc:
         raise RuntimeError(
             "Azure Document Intelligence could not read the resume. "
-            "Confirm its endpoint and access role, then try again."
+            "Confirm its endpoint and API key or access role, then try again."
         ) from exc
 
     cleaned = "\n".join(

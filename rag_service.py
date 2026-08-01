@@ -1,4 +1,4 @@
-"""Temporary, keyless Azure AI Search vector retrieval for one resume."""
+"""Temporary Azure AI Search vector retrieval for one resume."""
 
 import os
 import re
@@ -6,6 +6,7 @@ import time
 import uuid
 from contextlib import contextmanager
 
+from azure.core.credentials import AzureKeyCredential
 from azure.core.exceptions import HttpResponseError
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from azure.search.documents import SearchClient
@@ -73,26 +74,33 @@ def _settings() -> tuple[str, str, str, str, str]:
     return values
 
 
-def _credential() -> DefaultAzureCredential:
-    return DefaultAzureCredential()
+def _search_credential():
+    api_key = os.getenv("AZURE_SEARCH_API_KEY", "").strip()
+    return AzureKeyCredential(api_key) if api_key else DefaultAzureCredential()
 
 
 def _embeddings(endpoint: str, deployment: str, api_version: str):
-    token_provider = get_bearer_token_provider(
-        _credential(),
-        "https://cognitiveservices.azure.com/.default",
-    )
+    api_key = os.getenv("AZURE_OPENAI_API_KEY", "").strip()
+    auth = {}
+    if api_key:
+        auth["api_key"] = api_key
+    else:
+        auth["azure_ad_token_provider"] = get_bearer_token_provider(
+            DefaultAzureCredential(),
+            "https://cognitiveservices.azure.com/.default",
+        )
+
     return AzureOpenAIEmbeddings(
         azure_endpoint=endpoint,
         azure_deployment=deployment,
         openai_api_version=api_version,
-        azure_ad_token_provider=token_provider,
+        **auth,
     )
 
 
 def ensure_resume_index(endpoint: str, index_name: str) -> None:
     """Create the isolated vector index when it does not already exist."""
-    index_client = SearchIndexClient(endpoint, _credential())
+    index_client = SearchIndexClient(endpoint, _search_credential())
     try:
         if index_name in index_client.list_index_names():
             return
@@ -163,7 +171,7 @@ def retrieved_resume_context(resume_text: str, target_role: str):
         }
         for index, (chunk, vector) in enumerate(zip(chunks, vectors))
     ]
-    search_client = SearchClient(search_endpoint, index_name, _credential())
+    search_client = SearchClient(search_endpoint, index_name, _search_credential())
     try:
         upload_results = search_client.upload_documents(documents)
     except HttpResponseError as exc:

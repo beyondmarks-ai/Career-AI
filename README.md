@@ -116,15 +116,32 @@ AZURE_OPENAI_ENDPOINT=https://YOUR-OPENAI-RESOURCE.openai.azure.com/
 AZURE_OPENAI_DEPLOYMENT=YOUR-CHAT-DEPLOYMENT
 AZURE_OPENAI_EMBEDDING_DEPLOYMENT=YOUR-EMBEDDING-DEPLOYMENT
 AZURE_OPENAI_API_VERSION=2024-10-21
+AZURE_OPENAI_API_KEY=YOUR-AZURE-OPENAI-API-KEY
 AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT=https://YOUR-AI-RESOURCE.cognitiveservices.azure.com/
+AZURE_DOCUMENT_INTELLIGENCE_API_KEY=YOUR-DOCUMENT-INTELLIGENCE-API-KEY
 AZURE_SEARCH_ENDPOINT=https://YOUR-SEARCH-SERVICE.search.windows.net
 AZURE_SEARCH_INDEX=career-ai-resumes
+AZURE_SEARCH_API_KEY=YOUR-AZURE-SEARCH-ADMIN-KEY
 JOOBLE_API_KEY=YOUR-JOOBLE-API-KEY
 ```
 
 Never commit `.env`. The repository excludes it through `.gitignore`.
+When the API-key variables are omitted, the app falls back to Azure CLI or Managed
+Identity authentication through `DefaultAzureCredential`.
 
-## Required Azure roles
+To retrieve keys from the Azure resources already configured for this repository,
+authenticate once and run:
+
+```powershell
+az login
+.\configure-api-keys.ps1
+```
+
+The running application then uses the keys in `.env` and does not require Azure CLI.
+Treat `.env` as a secret because the Search admin key and cognitive-service keys grant
+access to billable resources.
+
+## Required Azure roles for passwordless authentication
 
 The local Azure CLI identity needs:
 

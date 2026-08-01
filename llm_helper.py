@@ -11,20 +11,26 @@ def _build_azure_llm(
     azure_endpoint: str,
     azure_deployment: str,
     api_version: str,
+    api_key: str,
 ):
     if azure_endpoint and azure_deployment:
-        from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+        auth = {}
+        if api_key:
+            auth["api_key"] = api_key
+        else:
+            from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 
-        token_provider = get_bearer_token_provider(
-            DefaultAzureCredential(),
-            'https://cognitiveservices.azure.com/.default',
-        )
+            auth["azure_ad_token_provider"] = get_bearer_token_provider(
+                DefaultAzureCredential(),
+                'https://cognitiveservices.azure.com/.default',
+            )
+
         return AzureChatOpenAI(
             azure_endpoint=azure_endpoint,
             azure_deployment=azure_deployment,
             api_version=api_version,
-            azure_ad_token_provider=token_provider,
             temperature=0.2,
+            **auth,
         )
 
 
@@ -38,7 +44,7 @@ def _build_openai_llm(openai_api_key: str, model: str):
 
 
 def get_llm():
-    '''Return a model authenticated by Azure CLI or Managed Identity.'''
+    '''Return a model authenticated by API key or an Azure credential.'''
     # Streamlit reruns the page in the same Python process. Reload the file here so
     # corrected configuration is used without retaining a stale model client.
     load_dotenv(override=True)
@@ -50,6 +56,7 @@ def get_llm():
             azure_endpoint,
             azure_deployment,
             os.getenv('AZURE_OPENAI_API_VERSION', '2024-10-21'),
+            os.getenv('AZURE_OPENAI_API_KEY', '').strip(),
         )
 
     openai_api_key = os.getenv('OPENAI_API_KEY')
@@ -61,5 +68,6 @@ def get_llm():
 
     raise RuntimeError(
         'AI is not configured. Set AZURE_OPENAI_ENDPOINT and '
-        'AZURE_OPENAI_DEPLOYMENT after az login, or set OPENAI_API_KEY.'
+        'AZURE_OPENAI_DEPLOYMENT, plus AZURE_OPENAI_API_KEY or an Azure '
+        'credential; alternatively set OPENAI_API_KEY.'
     )
