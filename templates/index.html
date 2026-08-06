@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="AI-powered resume intelligence and career guidance.">
+    <title>Career AI | Resume Intelligence</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+    <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+  </head>
+  <body>
+    <main class="shell">
+      <nav class="topbar" aria-label="Primary navigation">
+        <a class="brand" href="/"><span class="brand-mark">CA</span>Career AI</a>
+        <span class="service-state"><i></i> Azure services connected</span>
+      </nav>
+
+      <section class="hero">
+        <div class="eyebrow">AI-powered career intelligence</div>
+        <h1>Turn your resume into a stronger career story.</h1>
+        <p>Get evidence-based scoring, grounded role insights, a focused learning path,
+          and current opportunities across India.</p>
+        <div class="trust-row">
+          <span>Azure Document Intelligence</span>
+          <span>Retrieval-grounded analysis</span>
+          <span>Private temporary processing</span>
+        </div>
+      </section>
+
+      <section class="workspace" aria-labelledby="workspace-title">
+        <div class="section-head">
+          <div><span class="step-label">01</span><h2 id="workspace-title">Build your career report</h2>
+            <p>Add your resume and tell us where you want to go next.</p></div>
+          <span class="time-pill">Usually 30–90 seconds</span>
+        </div>
+
+        <form id="analysis-form" enctype="multipart/form-data">
+          <label class="upload" id="upload-zone">
+            <input id="resume" name="resume" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required>
+            <span class="upload-icon">↑</span>
+            <strong id="file-label">Choose a PDF or DOCX resume</strong>
+            <small>Maximum file size: 4 MB</small>
+          </label>
+          <div class="form-grid">
+            <label>Target role
+              <input id="target-role" name="target_role" type="text" maxlength="120" placeholder="e.g. Data Analyst" required>
+            </label>
+            <label>Report language
+              <select name="language">
+                <option>English</option><option>Hindi</option><option>French</option>
+              </select>
+            </label>
+          </div>
+          <button class="primary" id="analyze-button" type="submit">Analyze my resume <span>→</span></button>
+        </form>
+        <div class="message" id="message" role="alert" hidden></div>
+        <div class="progress" id="progress" hidden>
+          <div class="progress-copy"><span class="spinner"></span><div><strong>Building your career report</strong>
+            <small id="progress-detail">Securely extracting resume content…</small></div></div>
+          <div class="progress-track"><span></span></div>
+        </div>
+      </section>
+
+      <section id="report" class="report" hidden aria-live="polite">
+        <div class="report-heading"><div><span class="eyebrow">Your personalized career report</span>
+          <h2 id="report-title">Career readiness report</h2><p id="report-summary"></p></div>
+          <span id="role-pill" class="role-pill"></span></div>
+
+        <div class="score-grid" id="scores"></div>
+
+        <div class="report-grid">
+          <article class="panel"><h3>Strengths</h3><div id="strengths"></div></article>
+          <article class="panel"><h3>Priority improvements</h3><div id="improvements"></div></article>
+        </div>
+        <article class="panel full"><h3>Missing role keywords</h3><div class="chips" id="keywords"></div></article>
+        <article class="panel full"><h3>Skills worth building next</h3><div id="skills" class="skill-grid"></div></article>
+        <article class="panel full"><h3>Your focused action plan</h3><ol id="actions" class="actions"></ol></article>
+
+        <section class="jobs-section">
+          <div class="section-head"><div><span class="step-label">02</span><h2>Current opportunities in India</h2>
+            <p>Search live Jooble listings for your target role.</p></div>
+            <button class="secondary" id="jobs-button" type="button">Find matching jobs</button></div>
+          <div id="jobs-message" class="message" hidden></div><div id="jobs" class="jobs-grid"></div>
+        </section>
+      </section>
+
+      <footer>Resume content is processed temporarily and is not stored by this application.</footer>
+    </main>
+  </body>
+</html>

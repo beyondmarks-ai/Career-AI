@@ -78,7 +78,7 @@ Windows:
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements-streamlit.txt
 ```
 
 macOS or Linux:
@@ -86,7 +86,7 @@ macOS or Linux:
 ```bash
 python3 -m venv .venv
 .venv/bin/python -m pip install --upgrade pip
-.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python -m pip install -r requirements-streamlit.txt
 ```
 
 Sign in to Azure:
@@ -215,6 +215,24 @@ roles.
 ```
 
 The default App Service tier is B1 and can create billable Azure resources.
+
+## Vercel deployment
+
+Vercel serves `app.py` as a Flask Function. The Streamlit interface remains available
+for local and container deployments, while the Vercel interface uses the same Azure
+analysis and job-service modules.
+
+Install the Vercel CLI, link the project, add the variables from `.env` through the
+Vercel dashboard, and deploy:
+
+```bash
+npx vercel link --project career-ai
+npx vercel --prod
+```
+
+Configure every variable listed in the example environment file for the Production
+environment. Vercel deployments limit resume uploads to 4 MB; local Streamlit and
+Azure App Service deployments retain the 8 MB limit.
 
 ## Project structure
 

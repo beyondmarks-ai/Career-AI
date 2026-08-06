@@ -21,3 +21,6 @@ Thumbs.db
 
 # Ignore local IDE settings
 .idea/
+.vercel/
+.env.local
+.env.*.local

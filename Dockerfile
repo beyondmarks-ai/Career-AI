@@ -5,8 +5,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PORT=8000
 
 WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt requirements-streamlit.txt ./
+RUN pip install --no-cache-dir -r requirements-streamlit.txt
 COPY . .
 
 EXPOSE 8000
