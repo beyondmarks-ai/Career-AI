@@ -4,14 +4,29 @@ from __future__ import annotations
 
 import io
 import os
+from urllib.parse import urlsplit
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, make_response, redirect, render_template, request, url_for
 from werkzeug.exceptions import RequestEntityTooLarge
 
 from analysis_service import analyze_resume, extract_candidate_identity
 from azure_document_service import extract_resume_text_azure
 from job_service import search_jobs_india
 from learning_resources import learning_resources
+from invite_service import (
+    COOKIE_NAME,
+    SESSION_MAX_AGE,
+    InviteConfigurationError,
+    InviteUnavailableError,
+    clear_failed_logins,
+    csrf_token,
+    issue_session,
+    login_is_rate_limited,
+    record_failed_login,
+    redeem_invite,
+    validate_csrf,
+    validate_session,
+)
 from resume_parser import ResumeParseError
 
 
@@ -35,6 +50,97 @@ class UploadedResume(io.BytesIO):
 
 def api_error(message: str, status: int = 400):
     return jsonify({"ok": False, "error": message}), status
+
+
+def client_ip() -> str:
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    return (forwarded.split(",", 1)[0].strip() or request.remote_addr or "unknown")[:64]
+
+
+def safe_next_url(value: str) -> str:
+    candidate = str(value or "").strip()
+    parsed = urlsplit(candidate)
+    if candidate.startswith("/") and not candidate.startswith("//") and not parsed.netloc:
+        return candidate
+    return url_for("index")
+
+
+@app.before_request
+def require_invite_access():
+    if request.endpoint in {"login", "health", "static"}:
+        return None
+    try:
+        authenticated = validate_session(request.cookies.get(COOKIE_NAME, ""))
+    except (InviteConfigurationError, InviteUnavailableError) as exc:
+        if request.path.startswith("/api/"):
+            return api_error(str(exc), 503)
+        return render_template(
+            "login.html", csrf=csrf_token(), error=str(exc), next_url="/"
+        ), 503
+    if authenticated:
+        return None
+    if request.path.startswith("/api/"):
+        return api_error("Invite access is required.", 401)
+    return redirect(url_for("login", next=request.full_path.rstrip("?")))
+
+
+@app.after_request
+def secure_response(response):
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; style-src 'self' https://fonts.googleapis.com; "
+        "font-src https://fonts.gstatic.com; script-src 'self'; img-src 'self' data:; "
+        "connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    )
+    if request.endpoint in {"login", "logout"}:
+        response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    error = ""
+    next_url = safe_next_url(request.values.get("next", "/"))
+    if request.method == "POST":
+        try:
+            if not validate_csrf(request.form.get("csrf_token", "")):
+                error = "This form expired. Refresh the page and try again."
+            elif login_is_rate_limited(client_ip()):
+                error = "Too many attempts. Try again in 15 minutes."
+            else:
+                invite_row_key = redeem_invite(request.form.get("invite_code", ""))
+                if invite_row_key:
+                    clear_failed_logins(client_ip())
+                    response = make_response(redirect(next_url))
+                    response.set_cookie(
+                        COOKIE_NAME,
+                        issue_session(invite_row_key),
+                        max_age=SESSION_MAX_AGE,
+                        secure=True,
+                        httponly=True,
+                        samesite="Lax",
+                        path="/",
+                    )
+                    return response
+                record_failed_login(client_ip())
+                error = "That invite code is invalid, expired, or has already been used."
+        except (InviteConfigurationError, InviteUnavailableError) as exc:
+            error = str(exc)
+    return render_template(
+        "login.html", csrf=csrf_token(), error=error, next_url=next_url
+    ), (429 if "Too many" in error else 200)
+
+
+@app.post("/logout")
+def logout():
+    response = make_response(redirect(url_for("login")))
+    response.delete_cookie(
+        COOKIE_NAME, path="/", secure=True, httponly=True, samesite="Lax"
+    )
+    return response
 
 
 @app.get("/")

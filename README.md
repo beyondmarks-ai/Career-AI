@@ -234,6 +234,32 @@ Configure every variable listed in the example environment file for the Producti
 environment. Vercel deployments limit resume uploads to 4 MB; local Streamlit and
 Azure App Service deployments retain the 8 MB limit.
 
+### Invite-only access
+
+Production access is protected by expiring invite codes stored as SHA-256 hashes in
+Azure Table Storage. Codes can be single-use or limited-use. Successful redemption
+creates a seven-day signed, Secure, HttpOnly session cookie; revoking the originating
+invite also invalidates its existing sessions.
+
+Provision the storage account, table, and revocable least-privilege access policy:
+
+```powershell
+.\provision-invite-auth.ps1
+```
+
+Create, inspect, or revoke codes through the authenticated Azure CLI:
+
+```powershell
+.\manage-invites.ps1 -Action New -MaxUses 1 -ExpiresInDays 30
+.\manage-invites.ps1 -Action List
+.\manage-invites.ps1 -Action Revoke -InviteCode 'CA-YOUR-CODE'
+```
+
+The web deployment requires `INVITE_STORAGE_CONNECTION_STRING`,
+`INVITE_TABLE_NAME`, and a high-entropy `INVITE_SESSION_SECRET`. Never commit invite
+codes or these settings. Login failures are rate-limited through the same Azure table
+so protection is shared across serverless instances.
+
 ## Project structure
 
 ```text

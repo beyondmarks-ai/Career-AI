@@ -6,6 +6,7 @@ openai>=1.86.0,<2
 azure-identity>=1.23.0,<2
 azure-ai-documentintelligence>=1.0.2,<2
 azure-search-documents>=11.6.0,<12
+azure-data-tables>=12.7.0,<13
 python-dotenv==1.1.0
 PyPDF2==3.0.1
 python-docx==1.2.0
