@@ -310,3 +310,10 @@ quality, encryption, or corruption can still prevent extraction.
 
 Confirm `JOOBLE_API_KEY` is set, then use a recognizable target-role title. Jooble
 results are cached for 15 minutes to avoid unnecessary API usage.
+
+<!-- beyond-marks-credit:start -->
+---
+### Built by Beyond Marks AI Academy
+
+Developed by **Rakesh Kumar** at [Beyond Marks AI Academy](https://beyondmarks.ai).
+<!-- beyond-marks-credit:end -->
