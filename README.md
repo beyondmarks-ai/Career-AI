@@ -4,7 +4,7 @@
 
 Career AI turns a resume into a grounded career report, focused learning plan, and
 live job shortlist. It combines Azure Document Intelligence, Azure OpenAI, Azure AI
-Search RAG, Jooble, and a professional Streamlit interface.
+Search RAG, Jooble, and a responsive Flask interface.
 
 ![Career AI workflow](docs/images/career-ai-workflow.svg)
 
@@ -18,6 +18,10 @@ Search RAG, Jooble, and a professional Streamlit interface.
 - Prioritized skills and measurable next steps
 - Live Jooble recommendations for the target role across India
 - English, Hindi, and French report options
+- Context-aware AI career coach grounded in the generated report
+- Question-aware retrieval from the extracted resume for evidence-grounded chat
+- Cost-efficient GPT-4.1 mini chat through Azure AI Foundry
+- Downloadable, professionally formatted PDF career reports
 - Keyless local authentication through Azure CLI
 - Managed Identity support for Azure App Service
 - Temporary vector indexing with automatic resume-chunk deletion
@@ -42,7 +46,7 @@ be supported by evidence found in the resume.
 
 | Layer | Service or library |
 |---|---|
-| Interface | Streamlit |
+| Interface | Flask, responsive HTML/CSS, and vanilla JavaScript |
 | Document extraction | Azure Document Intelligence |
 | Chat and structured output | Azure OpenAI |
 | Embeddings | Azure OpenAI embeddings |
@@ -158,16 +162,16 @@ instead of the entire Search service.
 Windows:
 
 ```powershell
-.\.venv\Scripts\python.exe -m streamlit run main.py
+.\.venv\Scripts\python.exe app.py
 ```
 
 macOS or Linux:
 
 ```bash
-.venv/bin/python -m streamlit run main.py
+.venv/bin/python app.py
 ```
 
-Open [http://localhost:8501](http://localhost:8501), then:
+Open [http://localhost:5000](http://localhost:5000), then:
 
 1. Upload a resume of up to 8 MB.
 2. Enter the target role.
@@ -176,6 +180,7 @@ Open [http://localhost:8501](http://localhost:8501), then:
 5. Review the scores and resume insights.
 6. Open missing skills to find learning resources.
 7. Select **Jobs in India**, then click **Find matching jobs**.
+8. Download the report as a PDF or ask the AI coach follow-up questions.
 
 ## Tests
 
@@ -214,7 +219,8 @@ roles.
   -JoobleApiKey 'YOUR-JOOBLE-API-KEY'
 ```
 
-The default App Service tier is B1 and can create billable Azure resources.
+The default App Service tier is the no-cost F1 tier. Pass `-Sku B1` or another
+supported tier when production traffic or always-on hosting requires more capacity.
 
 ## Vercel deployment
 
@@ -234,36 +240,12 @@ Configure every variable listed in the example environment file for the Producti
 environment. Vercel deployments limit resume uploads to 4 MB; local Streamlit and
 Azure App Service deployments retain the 8 MB limit.
 
-### Invite-only access
-
-Production access is protected by expiring invite codes stored as SHA-256 hashes in
-Azure Table Storage. Codes can be single-use or limited-use. Successful redemption
-creates a seven-day signed, Secure, HttpOnly session cookie; revoking the originating
-invite also invalidates its existing sessions.
-
-Provision the storage account, table, and revocable least-privilege access policy:
-
-```powershell
-.\provision-invite-auth.ps1
-```
-
-Create, inspect, or revoke codes through the authenticated Azure CLI:
-
-```powershell
-.\manage-invites.ps1 -Action New -MaxUses 1 -ExpiresInDays 30
-.\manage-invites.ps1 -Action List
-.\manage-invites.ps1 -Action Revoke -InviteCode 'CA-YOUR-CODE'
-```
-
-The web deployment requires `INVITE_STORAGE_CONNECTION_STRING`,
-`INVITE_TABLE_NAME`, and a high-entropy `INVITE_SESSION_SECRET`. Never commit invite
-codes or these settings. Login failures are rate-limited through the same Azure table
-so protection is shared across serverless instances.
-
 ## Project structure
 
 ```text
-main.py                       Streamlit interface and report presentation
+app.py                        Public Flask routes, chat, and report APIs
+career_report_pdf.py          In-memory PDF career report generation
+templates/ and static/        Responsive web interface
 analysis_service.py           Candidate identity and grounded report generation
 azure_document_service.py     Azure PDF, DOCX, layout, and OCR extraction
 rag_service.py                Temporary Azure AI Search vector retrieval

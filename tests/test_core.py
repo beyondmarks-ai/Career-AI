@@ -10,7 +10,7 @@ from pydantic import ValidationError
 from analysis_service import ResumeAnalysis
 from learning_resources import learning_resources
 from job_service import search_jobs_india
-from rag_service import _search_credential, chunk_resume
+from rag_service import _search_credential, chunk_resume, retrieve_chat_context
 from resume_parser import ResumeParseError, extract_resume_text
 
 
@@ -78,6 +78,23 @@ class ResumeChunkingTests(unittest.TestCase):
         self.assertGreater(len(chunks), 1)
         self.assertTrue(all(len(chunk) <= 600 for chunk in chunks))
         self.assertIn("Azure analytics", " ".join(chunks))
+
+    def test_chat_retrieval_selects_question_relevant_resume_evidence(self):
+        resume = "\n".join(
+            ["Jordan Candidate", "Education: BSc Economics"]
+            + [f"General experience item {index} with routine responsibilities." for index in range(60)]
+            + ["Acme Corp: Reduced reporting time by 35% using SQL and Power BI."]
+        )
+
+        context = retrieve_chat_context(
+            resume,
+            "What measurable data analytics achievement do I have?",
+            "Data Analyst",
+            max_chars=4000,
+        )
+
+        self.assertIn("Reduced reporting time by 35%", context)
+        self.assertIn("Jordan Candidate", context)
 
     def test_uses_search_api_key_when_configured(self):
         with patch.dict(os.environ, {"AZURE_SEARCH_API_KEY": "test-search-key"}):

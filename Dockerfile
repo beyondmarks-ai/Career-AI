@@ -5,11 +5,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PORT=8000
 
 WORKDIR /app
-COPY requirements.txt requirements-streamlit.txt ./
-RUN pip install --no-cache-dir -r requirements-streamlit.txt
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/_stcore/health')"
-CMD ["streamlit", "run", "main.py", "--server.port=8000", "--server.address=0.0.0.0", "--server.headless=true"]
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "--threads", "4", "--timeout", "300", "app:app"]

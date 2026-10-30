@@ -19,6 +19,8 @@ param(
     [string]$JoobleApiKey = '',
     [string]$ResourceGroup = 'careerlens-rg',
     [string]$Location = 'centralindia',
+    [ValidateSet('F1', 'B1', 'B2', 'B3', 'P1V3', 'P2V3')]
+    [string]$Sku = 'F1',
     [string]$AzureOpenAIResourceId = ''
 )
 
@@ -35,7 +37,7 @@ az webapp up `
     --resource-group $ResourceGroup `
     --location $Location `
     --runtime 'PYTHON:3.12' `
-    --sku B1 `
+    --sku $Sku `
     --os-type linux `
     --track-status false `
     --only-show-errors

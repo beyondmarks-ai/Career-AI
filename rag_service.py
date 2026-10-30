@@ -28,6 +28,7 @@ from langchain_openai import AzureOpenAIEmbeddings
 
 DEFAULT_INDEX_NAME = "career-ai-resumes"
 EMBEDDING_DIMENSIONS = 1536
+CHAT_CONTEXT_MAX_CHARS = 18_000
 
 
 def chunk_resume(text: str, max_chars: int = 1400, overlap_chars: int = 180) -> list[str]:
@@ -54,6 +55,72 @@ def chunk_resume(text: str, max_chars: int = 1400, overlap_chars: int = 180) -> 
     if current:
         chunks.append(current)
     return chunks
+
+
+def retrieve_chat_context(
+    resume_text: str,
+    question: str,
+    target_role: str = "",
+    max_chars: int = CHAT_CONTEXT_MAX_CHARS,
+) -> str:
+    """Retrieve question-relevant resume sections without persisting candidate data."""
+    clean_text = str(resume_text or "").strip()[:30_000]
+    if not clean_text:
+        return ""
+    chunks = chunk_resume(clean_text, max_chars=1200, overlap_chars=120)
+    if len(clean_text) <= max_chars:
+        return f"[Complete resume]\n{clean_text}"
+    else:
+        query = f"{question} {target_role}".lower()
+        terms = {
+            token
+            for token in re.findall(r"[a-z0-9+#.]{2,}", query)
+            if token not in {
+                "the", "and", "for", "with", "that", "this", "what", "which",
+                "how", "can", "should", "about", "from", "your", "resume",
+            }
+        }
+        expansions = {
+            "experience": {"experience", "employment", "work", "role", "company"},
+            "education": {"education", "degree", "university", "college", "school"},
+            "skill": {"skills", "tools", "technologies", "proficient"},
+            "project": {"projects", "portfolio", "built", "developed"},
+            "certification": {"certifications", "certificate", "licensed"},
+            "contact": {"email", "phone", "linkedin", "location"},
+            "achievement": {"achieved", "improved", "increased", "reduced", "saved", "impact", "%"},
+            "data": {"data", "analytics", "sql", "dashboard", "power bi", "reporting"},
+        }
+        for marker, related in expansions.items():
+            if marker in query or any(word in query for word in related):
+                terms.update(related)
+
+        ranked = []
+        for order, chunk in enumerate(chunks):
+            lowered = chunk.lower()
+            score = sum(3 if term in lowered else 0 for term in terms)
+            score += sum(lowered.count(term) for term in terms)
+            ranked.append((score, order, chunk))
+        top = sorted(ranked, key=lambda item: (-item[0], item[1]))
+        selected_orders = {0}
+        budget = len(chunks[0]) + 24
+        for _score, order, chunk in top:
+            if order == 0:
+                continue
+            section_size = len(chunk) + 24
+            if budget + section_size <= max_chars:
+                selected_orders.add(order)
+                budget += section_size
+        selected = [(order, chunks[order]) for order in sorted(selected_orders)]
+
+    output = []
+    total = 0
+    for order, chunk in selected:
+        section = f"[Resume section {order + 1}]\n{chunk}"
+        if output and total + len(section) > max_chars:
+            break
+        output.append(section)
+        total += len(section)
+    return "\n\n".join(output)
 
 
 def _settings() -> tuple[str, str, str, str, str]:

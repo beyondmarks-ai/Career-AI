@@ -1,2 +1,2 @@
 #!/bin/sh
-streamlit run main.py --server.port "${PORT:-8000}" --server.address 0.0.0.0 --server.headless true
+gunicorn --bind "0.0.0.0:${PORT:-8000}" --workers 2 --threads 4 --timeout 300 app:app
